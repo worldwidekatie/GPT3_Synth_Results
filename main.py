@@ -62,7 +62,7 @@ def make_models(data, model):
     CREATE TABLE IF NOT EXISTS {data}_{model}_results
     ('model_name', 'train_accuracy', 'test_accuracy', 
     't_stat', 'p_value', 't_stat_05', 'p_value_05', 'average', 'roc_auc', 
-    '0_f1', '0_recall', '0_precision', '1_f1', 'f_recall', '1_precision',
+    '0_f1', '0_recall', '0_precision', '1_f1', '1_recall', '1_precision',
     '0_tstat', '0_pvalue', '0_avg', 
     '1_tstat', '1_pvalue', '1_avg',
     '0_tstat_05', '0_pvalue_05', 
@@ -114,7 +114,7 @@ def make_models(data, model):
 
             tstats = stats.ttest_ind(orig_acc, orig_acc)
 
-            # T-tests 0
+            # T-tests 0 (for recall)
             y_pred_0 = preds[preds['y_test'] == 0]
             avg_0 = y_pred_0[name].mean()
             y_pred_0 = y_pred_0[name]
@@ -124,15 +124,15 @@ def make_models(data, model):
             tstats_0 = stats.ttest_ind(y_pred_0, orig_preds_0)
             
             
-            # T-tests 1
-            y_pred_1 = preds[preds['y_test'] == 1]
-            avg_1 = y_pred_1[name].mean()
-            y_pred_1 = y_pred_1[name]
+            # T-tests 1 (for precision)
+            model_pos = preds[preds[name] == 1]
+            model_tp = model_pos['y_test']
+            avg_1 = model_tp.mean()
 
-            orig_preds_1 = preds[preds['y_test'] == 1]
-            orig_preds_1 = orig_preds_1[f'{data}_{model}_orig']
+            orig_pos = preds[preds[f'{data}_{model}_orig'] == 1]
+            orig_tp = orig_pos['y_test'] 
 
-            tstats_1 = stats.ttest_ind(y_pred_1, orig_preds_1)       
+            tstats_1 = stats.ttest_ind(model_tp, orig_tp) 
 
             # Put that stuff in the other table
             insert_results = f"""
@@ -140,7 +140,7 @@ def make_models(data, model):
             ('model_name', 'train_accuracy', 'test_accuracy', 
             't_stat', 'p_value', 'average', 'roc_auc',
             '0_f1', '0_recall', '0_precision',
-            '1_f1', 'f_recall', '1_precision',
+            '1_f1', '1_recall', '1_precision',
             '0_tstat', '0_pvalue', '0_avg',
             '1_tstat', '1_pvalue', '1_avg')
             VALUES
@@ -192,7 +192,7 @@ def make_models(data, model):
             tstats = stats.ttest_ind(acc_05, orig_acc)
             tstats_05 = stats.ttest_ind(acc_05, acc_05)
             
-            # T-tests 0
+            # T-tests 0 (recall t-tests)
             y_pred_0 = preds[preds['y_test'] == 0]
             avg_0 = y_pred_0[name].mean()
             y_pred_0 = y_pred_0[name]
@@ -202,15 +202,15 @@ def make_models(data, model):
 
             tstats_0 = stats.ttest_ind(y_pred_0, orig_preds_0)
             
-            # T-tests 1
-            y_pred_1 = preds[preds['y_test'] == 1]
-            avg_1 = y_pred_1[name].mean()
-            y_pred_1 = y_pred_1[name]
+            # T-tests 1 (precision t-tests)
+            model_pos = preds[preds[name] == 1]
+            model_tp = model_pos['y_test']
+            avg_1 = model_tp.mean()
 
-            orig_preds_1 = preds[preds['y_test'] == 1]
-            orig_preds_1 = orig_preds_1[f'{data}_{model}_orig']
+            orig_pos = preds[preds[f'{data}_{model}_orig'] == 1]
+            orig_tp = orig_pos['y_test'] 
 
-            tstats_1 = stats.ttest_ind(y_pred_1, orig_preds_1)
+            tstats_1 = stats.ttest_ind(model_tp, orig_tp)
           
 
             # Put that stuff in the other table
@@ -218,7 +218,7 @@ def make_models(data, model):
             't_stat', 'p_value', 't_stat_05', 'p_value_05', 
             'average', 'roc_auc',
             '0_f1', '0_recall', '0_precision',
-            '1_f1', 'f_recall', '1_precision',
+            '1_f1', '1_recall', '1_precision',
             '0_tstat', '0_pvalue', '0_avg', 
             '1_tstat', '1_pvalue', '1_avg',
             '0_tstat_05', '0_pvalue_05', 
@@ -265,23 +265,16 @@ def make_models(data, model):
             {vals};"""
             cur.execute(insert_results)
             conn.commit()
+                   
             
-
         else:
-            if f == f'{data}_lstm_train':
-                name = f'{data}_{model}_lstm'
-                train = pd.read_csv(f'{data}/{data}_data/{data}_lstm_train.csv')
-                train['text'] = train['text'].replace(np.NaN, 'Empty')
-                train = train[train['text'] != 'Empty']            
-            
-            else:
-                # Get all set up
-                name = f'{data}_{model}_{f[:6]}{f[15:]}'
-                train = pd.read_csv(f'{data}/{data}_data/{f}.csv')
-                train['text'] = train['text'].replace(np.NaN, 'Empty')
-                train = train[train['text'] != 'Empty']
-            
-            
+            # Get all set up
+            name = f'{data}_{model}_{f[:6]}{f[15:]}'
+            train = pd.read_csv(f'{data}/{data}_data/{f}.csv')
+            train['text'] = train['text'].replace(np.NaN, 'Empty')
+            train = train[train['text'] != 'Empty']
+        
+        
             X_train = train['text']
             y_train = train['label']
             X_test = test['text']
@@ -319,7 +312,7 @@ def make_models(data, model):
             tstats = stats.ttest_ind(acc, orig_acc)
             tstats_05 = stats.ttest_ind(acc, acc_05)
             
-            # T-tests 0
+            # T-tests 0 (t-tests for recall)
             y_pred_0 = preds[preds['y_test'] == 0]
             avg_0 = y_pred_0[name].mean()
             y_pred_0 = y_pred_0[name]
@@ -336,26 +329,28 @@ def make_models(data, model):
             tstats_05_0 = stats.ttest_ind(preds_05_0, y_pred_0)
 
 
-            # # T-tests 1
-            y_pred_1 = preds[preds['y_test'] == 1]
-            avg_1 = y_pred_1[name].mean()
-            y_pred_1 = y_pred_1[name]
+            # T-tests 1 (t-tests for precision)
 
-            orig_preds_1 = preds[preds['y_test'] == 1]
-            orig_preds_1 = orig_preds_1[f'{data}_{model}_orig']
+            # Prediction dataframe with all positives
+            model_pos = preds[preds[name] == 1]
+            model_tp = model_pos['y_test']
+            avg_1 = model_tp.mean()
 
-            preds_05_1 = preds[preds['y_test'] == 1]
-            preds_05_1 = preds_05_1[f'{data}_{model}_orig_05']
+            orig_pos = preds[preds[f'{data}_{model}_orig'] == 1]
+            orig_tp = orig_pos['y_test'] 
 
-            tstats_1 = stats.ttest_ind(y_pred_1, orig_preds_1)
-            tstats_05_1 = stats.ttest_ind(y_pred_1, preds_05_1)
+            pos_05 = preds[preds[f'{data}_{model}_orig_05'] == 1]
+            pos_05_tp = pos_05['y_test'] 
+
+            tstats_1 = stats.ttest_ind(model_tp, orig_tp)
+            tstats_05_1 = stats.ttest_ind(model_tp, pos_05_tp)
 
 
             colls = ['model_name', 'train_accuracy', 'test_accuracy', 
             't_stat', 'p_value', 't_stat_05', 'p_value_05', 
             'average', 'roc_auc',
             '0_f1', '0_recall', '0_precision',
-            '1_f1', 'f_recall', '1_precision',
+            '1_f1', '1_recall', '1_precision',
             '0_tstat', '0_pvalue', '0_avg', 
             '1_tstat', '1_pvalue', '1_avg',
             '0_tstat_05', '0_pvalue_05', 
