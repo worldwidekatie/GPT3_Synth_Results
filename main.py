@@ -26,6 +26,7 @@ def make_models(data, model):
 
     files = [f'{data}_train',
     f'{data}_train_05',
+    f'{data}_lstm_train',
     '1shot_05_train_ada', 
     '1shot_05_train_davinci', 
     '2shot_05_train_ada',
@@ -268,11 +269,18 @@ def make_models(data, model):
                    
             
         else:
-            # Get all set up
-            name = f'{data}_{model}_{f[:6]}{f[15:]}'
-            train = pd.read_csv(f'{data}/{data}_data/{f}.csv')
-            train['text'] = train['text'].replace(np.NaN, 'Empty')
-            train = train[train['text'] != 'Empty']
+            if f == f'{data}_lstm_train':
+                name = f'{data}_{model}_lstm'
+                train = pd.read_csv(f'{data}/{data}_data/{data}_lstm_train.csv')
+                train['text'] = train['text'].replace(np.NaN, 'Empty')
+                train = train[train['text'] != 'Empty']            
+            
+            else:
+                # Get all set up
+                name = f'{data}_{model}_{f[:6]}{f[15:]}'
+                train = pd.read_csv(f'{data}/{data}_data/{f}.csv')
+                train['text'] = train['text'].replace(np.NaN, 'Empty')
+                train = train[train['text'] != 'Empty']
         
         
             X_train = train['text']
